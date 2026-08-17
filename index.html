@@ -41,28 +41,39 @@
   .gate{ max-width:520px; margin:60px auto; background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:28px; }
   .gate h2{ margin:0 0 6px; font-size:20px; }
   .gate p{ color:var(--ink-soft); font-size:13.5px; line-height:1.6; margin:0 0 18px; }
-  .warn-box{ background:var(--terracotta-pale); border:1px solid #E4C3BA; color:var(--terracotta); font-size:12.5px; line-height:1.55; padding:12px 14px; border-radius:12px; margin-bottom:18px; }
-  .warn-box b{ display:block; margin-bottom:3px; }
   label{ display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin-bottom:6px; text-transform:uppercase; letter-spacing:.05em; }
   input[type=password], input[type=text]{
     width:100%; border:1px solid var(--border); border-radius:12px; padding:11px 14px; font-size:14px;
     font-family:'IBM Plex Mono',monospace; outline:none; background:#fff; color:var(--ink); margin-bottom:14px;
   }
   input:focus{ border-color:var(--emerald); }
+  .pass-wrap{ position:relative; }
+  .pass-wrap input{ padding-right:44px; margin-bottom:0; }
+  .pass-eye{
+    position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    width:32px; height:32px; border:none; background:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; color:var(--ink-faint); border-radius:999px;
+  }
+  .pass-eye:hover{ color:var(--emerald); background:var(--emerald-pale); }
+  .pass-wrap + .btn, form .btn{ margin-top:14px; }
   .btn{ border:none; border-radius:999px; padding:12px 20px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
   .btn-primary{ background:var(--emerald); color:#fff; width:100%; }
   .btn-primary:disabled{ opacity:.55; cursor:default; }
   .err-msg{ background:var(--terracotta-pale); color:var(--terracotta); font-size:13px; padding:10px 12px; border-radius:10px; margin-top:12px; display:none; }
+  .header-actions{ display:flex; align-items:center; gap:10px; }
+  .btn-logout{
+    display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.14); color:#fff; border:none;
+    border-radius:999px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
+  }
+  .btn-logout:hover{ background:rgba(255,255,255,.24); }
 
   /* ---------- Stats ---------- */
-  .stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+  .stat-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px; }
   .stat-card{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; }
   .stat-card .lbl{ font-size:11px; font-weight:700; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
   .stat-card .val{ font-size:20px; font-weight:700; font-family:'Fraunces',serif; }
   .stat-card.in .val{ color:var(--emerald); }
   .stat-card.out .val{ color:var(--terracotta); }
-  .stat-card.hidden-note{ background:var(--gold-soft); border-color:#E3C88A; }
-  .stat-card.hidden-note .val{ color:#8A6420; }
 
   /* ---------- Toolbar ---------- */
   .toolbar{ display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
@@ -82,7 +93,6 @@
   .u-info{ flex:1; min-width:0; }
   .u-name{ font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; }
   .u-email{ font-size:12px; color:var(--ink-faint); }
-  .u-dup{ font-size:10px; font-weight:700; background:var(--gold-soft); color:#8A6420; padding:2px 7px; border-radius:999px; }
   .u-nums{ text-align:right; flex-shrink:0; }
   .u-balance{ font-size:14px; font-weight:700; font-family:'Fraunces',serif; }
   .u-count{ font-size:11px; color:var(--ink-faint); }
@@ -90,12 +100,6 @@
   .section-head{ display:flex; align-items:center; justify-content:space-between; margin:26px 0 10px; }
   .section-head h3{ margin:0; font-size:14px; font-weight:700; color:var(--emerald); text-transform:uppercase; letter-spacing:.05em; }
   .section-head .count-pill{ font-size:11.5px; background:var(--emerald-pale); color:var(--emerald); padding:3px 10px; border-radius:999px; font-weight:700; }
-
-  details.empty-wrap summary{ cursor:pointer; font-size:13px; color:var(--ink-soft); padding:12px 16px; list-style:none; display:flex; align-items:center; gap:8px; }
-  details.empty-wrap summary::-webkit-details-marker{ display:none; }
-  details.empty-wrap summary::before{ content:"▸"; transition:transform .15s; }
-  details.empty-wrap[open] summary::before{ transform:rotate(90deg); }
-  .empty-hint{ font-size:12px; color:var(--ink-faint); padding:0 16px 14px; }
 
   .empty-state{ text-align:center; padding:40px 16px; color:var(--ink-faint); font-size:13.5px; }
 
@@ -127,7 +131,10 @@
     <h1>Panel Monitoring</h1>
     <div class="sub">Atur Uangku · Admin</div>
   </div>
-  <div class="badge-live" id="liveBadge" style="display:none;"><span class="dot"></span><span id="liveText">Live</span></div>
+  <div class="header-actions">
+    <div class="badge-live" id="liveBadge" style="display:none;"><span class="dot"></span><span id="liveText">Live</span></div>
+    <button class="btn-logout" id="btnLogout" style="display:none;">⎋ Keluar</button>
+  </div>
 </header>
 
 <main>
@@ -135,16 +142,19 @@
   <!-- ===== GATE: login Gmail + Password ===== -->
   <div class="gate" id="gateView">
     <h2 class="serif">Masuk sebagai Admin</h2>
-    <p>Gunakan username admin (contoh: <span class="mono">admin1</span>) dan password yang sudah dibuat di Supabase Authentication. Panel ini hanya akan menampilkan data semua pengguna kalau akun ini sudah didaftarkan sebagai admin di database.</p>
-    <div class="warn-box">
-      <b>⚠️ Perhatikan keamanan</b>
-      Akses admin diatur lewat kebijakan (RLS) di database, bukan lewat kode di file ini — jadi aman dibuka di perangkat mana pun selama akun kamu yang login. Tetap jangan bagikan email/password admin ke orang lain, dan cabut akses admin (hapus dari tabel <span class="mono">admin_users</span>) kalau sudah tidak dipakai.
-    </div>
-    <label>Username Admin</label>
-    <input type="text" id="inpEmail" placeholder="admin1" autocomplete="username" />
-    <label>Password</label>
-    <input type="password" id="inpPass" placeholder="Password admin" autocomplete="current-password" />
-    <button class="btn btn-primary" id="btnConnect">Masuk &amp; Muat Data</button>
+    <form id="loginForm" autocomplete="on">
+      <label>Username Admin</label>
+      <input type="text" id="inpEmail" name="username" placeholder="admin1" autocomplete="username" />
+      <label>Password</label>
+      <div class="pass-wrap">
+        <input type="password" id="inpPass" name="password" placeholder="Password admin" autocomplete="current-password" />
+        <button type="button" class="pass-eye" id="btnTogglePass" aria-label="Tampilkan/sembunyikan password">
+          <svg class="icon-eye" id="iconEyeOpen" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="icon-eye" id="iconEyeClosed" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.6 21.6 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 7 11 7a21.6 21.6 0 0 1-2.68 3.68M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </button>
+      </div>
+      <button class="btn btn-primary" type="submit" id="btnConnect">Masuk &amp; Muat Data</button>
+    </form>
     <button type="button" id="btnRegisterToggle" style="width:100%; margin-top:8px; background:none; border:none; color:var(--emerald); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; text-decoration:underline;">Belum punya akun admin? Daftar dulu →</button>
     <button type="button" id="btnDiag" style="width:100%; margin-top:8px; background:none; border:1px solid var(--border); color:var(--ink-soft); border-radius:999px; padding:10px 20px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;">🔍 Tes Koneksi Login (tanpa DevTools)</button>
     <div class="err-msg" id="gateErr"></div>
@@ -180,12 +190,6 @@
     </div>
     <div class="card" id="activeList"></div>
 
-    <details class="empty-wrap" id="emptyWrap">
-      <summary><span id="emptySummaryText">Akun tanpa transaksi (disembunyikan dari data utama) — 0</span></summary>
-      <div class="empty-hint">Akun-akun ini terdaftar tetapi belum pernah mencatat pemasukan maupun pengeluaran, sehingga tidak dihitung dalam data utama di atas. Ditampilkan di sini hanya untuk transparansi.</div>
-      <div class="card" id="emptyList" style="margin:0 6px 10px;"></div>
-    </details>
-
   </div>
 
   <div class="loader" id="loaderView" style="display:none;">Memuat data pengguna…</div>
@@ -219,6 +223,12 @@
 
   const ADMIN_DOMAIN = '@admin.aturuangku.internal';
 
+  // ---------- Sesi admin: tersimpan di localStorage supaya refresh halaman tidak logout ----------
+  const ADMIN_SESSION_KEY = 'au_admin_session';
+  function saveAdminSession(s){ localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(s)); }
+  function loadAdminSession(){ try { return JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || 'null'); } catch(e){ return null; } }
+  function clearAdminSession(){ localStorage.removeItem(ADMIN_SESSION_KEY); }
+
   // Terima "username admin" (mis. admin1) ATAU email penuh.
   // Kalau tidak ada '@', otomatis diubah jadi admin1@admin.aturuangku.internal
   async function authSignIn(usernameOrEmail, password){
@@ -232,6 +242,23 @@
     const data = await res.json().catch(() => ({}));
     if(!res.ok) throw new Error(data.error_description || data.msg || data.error || 'Username atau password salah.');
     return data;
+  }
+
+  async function authRefresh(refresh_token){
+    const res = await fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_ANON_KEY },
+      body: JSON.stringify({ refresh_token }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(data.error_description || data.msg || data.error || 'Sesi kedaluwarsa.');
+    return data;
+  }
+
+  function logoutAdmin(){
+    clearAdminSession();
+    session = null;
+    location.reload();
   }
 
   // Semua request pakai anon key + token akun yang login → RLS tetap berlaku,
@@ -260,7 +287,7 @@
     return data || [];
   }
 
-  async function loadAll(){
+  async function loadAll(_isRetry){
     document.getElementById('gateView').style.display = 'none';
     document.getElementById('dashView').style.display = 'none';
     document.getElementById('loaderView').style.display = 'block';
@@ -307,13 +334,27 @@
       document.getElementById('loaderView').style.display = 'none';
       document.getElementById('dashView').style.display = 'block';
       document.getElementById('liveBadge').style.display = 'flex';
+      document.getElementById('btnLogout').style.display = 'flex';
+      saveAdminSession(session);
       renderDashboard();
 
     } catch(e){
+      const raw = e.message || '';
+      const looksExpired = raw.toLowerCase().includes('jwt') || raw.toLowerCase().includes('token') || raw.includes('401');
+
+      // Token mungkin kedaluwarsa: coba refresh sekali sebelum menyerah.
+      if(!_isRetry && looksExpired && session && session.refresh_token){
+        try {
+          session = await authRefresh(session.refresh_token);
+          return loadAll(true);
+        } catch(e2){ /* refresh gagal, lanjut ke penanganan error di bawah */ }
+      }
+
       document.getElementById('loaderView').style.display = 'none';
       document.getElementById('gateView').style.display = 'block';
+      clearAdminSession();
+      session = null;
       const err = document.getElementById('gateErr');
-      const raw = e.message || '';
       const isAuthzErr = raw.toLowerCase().includes('akses admin') || raw.toLowerCase().includes('permission') || raw.toLowerCase().includes('not authorized');
       err.textContent = isAuthzErr
         ? 'Login berhasil, tapi akun ini belum terdaftar sebagai admin. Jalankan admin-setup.sql di Supabase dan tambahkan email ini ke tabel admin_users.'
@@ -322,20 +363,9 @@
     }
   }
 
-  // ---------- Deteksi akun kosong & duplikat ----------
-  function splitActiveEmpty(list){
-    const active = list.filter(u => u.txCount > 0);
-    const empty  = list.filter(u => u.txCount === 0);
-
-    // tandai kemungkinan duplikat: email sama persis antara akun aktif & akun kosong
-    const activeEmails = new Set(active.map(u => (u.email||'').toLowerCase()));
-    empty.forEach(u => { u.isDupOfActive = activeEmails.has((u.email||'').toLowerCase()); });
-    active.forEach(u => {
-      const dupCount = empty.filter(e => (e.email||'').toLowerCase() === (u.email||'').toLowerCase()).length;
-      u.dupHiddenCount = dupCount;
-    });
-
-    return { active, empty };
+  // ---------- Akun dengan transaksi ----------
+  function getActiveUsers(list){
+    return list.filter(u => u.txCount > 0);
   }
 
   function applyFilters(list){
@@ -363,7 +393,7 @@
   }
 
   function renderDashboard(){
-    const { active, empty } = splitActiveEmpty(users);
+    const active = getActiveUsers(users);
 
     // Stat cards (dihitung HANYA dari akun yang sudah bertransaksi)
     const totalIn = active.reduce((s,u)=>s+u.incomeTotal,0);
@@ -372,39 +402,30 @@
       <div class="stat-card"><div class="lbl">Akun Terbaca</div><div class="val">${active.length}</div></div>
       <div class="stat-card in"><div class="lbl">Total Pemasukan</div><div class="val">${formatRupiah(totalIn)}</div></div>
       <div class="stat-card out"><div class="lbl">Total Pengeluaran</div><div class="val">${formatRupiah(totalOut)}</div></div>
-      <div class="stat-card hidden-note"><div class="lbl">Akun Belum Ada Transaksi</div><div class="val">${empty.length}</div></div>
     `;
 
     const filteredActive = applyFilters(active);
     document.getElementById('activeCountPill').textContent = filteredActive.length;
     document.getElementById('activeList').innerHTML = filteredActive.length
-      ? filteredActive.map(u => rowHtml(u, true)).join('')
+      ? filteredActive.map(u => rowHtml(u)).join('')
       : `<div class="empty-state">Tidak ada akun yang cocok.</div>`;
-
-    document.getElementById('emptySummaryText').textContent = `Akun tanpa transaksi (disembunyikan dari data utama) — ${empty.length}`;
-    document.getElementById('emptyList').innerHTML = empty.length
-      ? empty.map(u => rowHtml(u, false)).join('')
-      : `<div class="empty-state">Tidak ada akun kosong.</div>`;
 
     document.querySelectorAll('[data-uid]').forEach(el => {
       el.addEventListener('click', () => openDetail(el.dataset.uid));
     });
   }
 
-  function rowHtml(u, showBalance){
+  function rowHtml(u){
     const bal = u.incomeTotal - u.expenseTotal;
-    const dupBadge = (showBalance && u.dupHiddenCount)
-      ? `<span class="u-dup">${u.dupHiddenCount} akun kosong disembunyikan</span>`
-      : (!showBalance && u.isDupOfActive ? `<span class="u-dup">duplikat akun aktif</span>` : '');
     return `
       <div class="u-row" data-uid="${u.id}">
         <div class="u-avatar">${initials(u.name)}</div>
         <div class="u-info">
-          <div class="u-name">${escapeHtml(u.name)} ${dupBadge}</div>
+          <div class="u-name">${escapeHtml(u.name)}</div>
           <div class="u-email mono">${escapeHtml(u.email)}</div>
         </div>
         <div class="u-nums">
-          ${showBalance ? `<div class="u-balance" style="color:${bal>=0?'var(--emerald)':'var(--terracotta)'}">${formatRupiah(bal)}</div>` : `<div class="u-balance" style="color:var(--ink-faint);">—</div>`}
+          <div class="u-balance" style="color:${bal>=0?'var(--emerald)':'var(--terracotta)'}">${formatRupiah(bal)}</div>
           <div class="u-count">${u.txCount} transaksi</div>
         </div>
       </div>`;
@@ -447,7 +468,10 @@
   document.getElementById('btnCloseModal').addEventListener('click', () => document.getElementById('modalBg').classList.remove('show'));
   document.getElementById('modalBg').addEventListener('click', (e) => { if(e.target.id === 'modalBg') e.currentTarget.classList.remove('show'); });
 
-  document.getElementById('btnConnect').addEventListener('click', async () => {
+  // Pakai submit event pada <form> (bukan sekadar klik tombol) supaya
+  // browser mengenali ini sebagai login form dan menawarkan simpan password.
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
     const username = document.getElementById('inpEmail').value.trim();
     const pass = document.getElementById('inpPass').value;
     const err = document.getElementById('gateErr');
@@ -461,14 +485,40 @@
     btn.disabled = true; btn.textContent = 'Memproses…';
     try {
       session = await authSignIn(username, pass);
-      loadAll();
-    } catch(e){
-      err.textContent = e.message;
+      await loadAll();
+    } catch(e2){
+      err.textContent = e2.message;
       err.style.display = 'block';
     } finally {
       btn.disabled = false; btn.textContent = 'Masuk & Muat Data';
     }
   });
+
+  // ---------- Tampilkan/sembunyikan password ----------
+  document.getElementById('btnTogglePass').addEventListener('click', () => {
+    const inp = document.getElementById('inpPass');
+    const eyeOpen = document.getElementById('iconEyeOpen');
+    const eyeClosed = document.getElementById('iconEyeClosed');
+    const showing = inp.type === 'text';
+    inp.type = showing ? 'password' : 'text';
+    eyeOpen.style.display = showing ? '' : 'none';
+    eyeClosed.style.display = showing ? 'none' : '';
+  });
+
+  // ---------- Logout ----------
+  document.getElementById('btnLogout').addEventListener('click', logoutAdmin);
+
+  // ---------- Pulihkan sesi tersimpan supaya refresh tidak logout ----------
+  (async function restoreAdminSession(){
+    const saved = loadAdminSession();
+    if(!saved || !saved.access_token) return;
+    session = saved;
+    try {
+      await loadAll();
+    } catch(e){
+      // loadAll sudah menangani error & membersihkan sesi kalau gagal
+    }
+  })();
 
   document.getElementById('btnRegisterToggle').addEventListener('click', () => {
     const box = document.getElementById('registerBox');
