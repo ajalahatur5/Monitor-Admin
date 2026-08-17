@@ -135,15 +135,15 @@
   <!-- ===== GATE: login Gmail + Password ===== -->
   <div class="gate" id="gateView">
     <h2 class="serif">Masuk sebagai Admin</h2>
-    <p>Gunakan akun Gmail &amp; password yang sama seperti login di aplikasi Atur Uangku. Panel ini hanya akan menampilkan data semua pengguna kalau akun ini sudah didaftarkan sebagai admin di database (lihat <code class="mono">admin-setup.sql</code>).</p>
+    <p>Gunakan username admin (contoh: <span class="mono">admin1</span>) dan password yang sudah dibuat di Supabase Authentication. Panel ini hanya akan menampilkan data semua pengguna kalau akun ini sudah didaftarkan sebagai admin di database.</p>
     <div class="warn-box">
       <b>⚠️ Perhatikan keamanan</b>
       Akses admin diatur lewat kebijakan (RLS) di database, bukan lewat kode di file ini — jadi aman dibuka di perangkat mana pun selama akun kamu yang login. Tetap jangan bagikan email/password admin ke orang lain, dan cabut akses admin (hapus dari tabel <span class="mono">admin_users</span>) kalau sudah tidak dipakai.
     </div>
-    <label>Gmail</label>
-    <input type="text" id="inpEmail" placeholder="nama@gmail.com" autocomplete="username" />
+    <label>Username Admin</label>
+    <input type="text" id="inpEmail" placeholder="admin1" autocomplete="username" />
     <label>Password</label>
-    <input type="password" id="inpPass" placeholder="Password akun kamu" autocomplete="current-password" />
+    <input type="password" id="inpPass" placeholder="Password admin" autocomplete="current-password" />
     <button class="btn btn-primary" id="btnConnect">Masuk &amp; Muat Data</button>
     <div class="err-msg" id="gateErr"></div>
   </div>
@@ -432,15 +432,19 @@
   document.getElementById('modalBg').addEventListener('click', (e) => { if(e.target.id === 'modalBg') e.currentTarget.classList.remove('show'); });
 
   document.getElementById('btnConnect').addEventListener('click', async () => {
-    const email = document.getElementById('inpEmail').value.trim();
+    const ADMIN_DOMAIN = '@admin.aturuangku.internal';
+    let username = document.getElementById('inpEmail').value.trim().toLowerCase();
     const pass = document.getElementById('inpPass').value;
     const err = document.getElementById('gateErr');
     err.style.display = 'none';
-    if(!email || !pass){
-      err.textContent = 'Gmail dan password wajib diisi.';
+    if(!username || !pass){
+      err.textContent = 'Username dan password wajib diisi.';
       err.style.display = 'block';
       return;
     }
+    // kalau user ketik email lengkap (mis. akun lama), pakai apa adanya;
+    // kalau cuma ketik username (mis. "admin1"), tambahkan domain internal
+    const email = username.includes('@') ? username : username + ADMIN_DOMAIN;
     const btn = document.getElementById('btnConnect');
     btn.disabled = true; btn.textContent = 'Memproses…';
     try {
