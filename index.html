@@ -145,7 +145,17 @@
     <label>Password</label>
     <input type="password" id="inpPass" placeholder="Password admin" autocomplete="current-password" />
     <button class="btn btn-primary" id="btnConnect">Masuk &amp; Muat Data</button>
+    <button type="button" id="btnRegisterToggle" style="width:100%; margin-top:8px; background:none; border:none; color:var(--emerald); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; text-decoration:underline;">Belum punya akun admin? Daftar dulu →</button>
+    <button type="button" id="btnDiag" style="width:100%; margin-top:8px; background:none; border:1px solid var(--border); color:var(--ink-soft); border-radius:999px; padding:10px 20px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;">🔍 Tes Koneksi Login (tanpa DevTools)</button>
     <div class="err-msg" id="gateErr"></div>
+    <pre id="diagBox" class="mono" style="display:none; white-space:pre-wrap; word-break:break-all; background:var(--cream); border:1px solid var(--border); border-radius:12px; padding:12px; font-size:11.5px; margin-top:12px; max-height:260px; overflow:auto;"></pre>
+
+    <div id="registerBox" style="display:none; margin-top:18px; padding-top:18px; border-top:1px dashed var(--border);">
+      <h2 class="serif" style="font-size:17px;">Daftar Admin Baru</h2>
+      <p style="font-size:12.5px; color:var(--ink-soft); margin:0 0 14px;">Gunakan username &amp; password yang sama seperti di atas, lalu klik Daftar. Akun akan dibuat lewat jalur resmi Supabase (bukan SQL manual), jadi passwordnya pasti valid.</p>
+      <button class="btn btn-primary" id="btnRegister" style="background:var(--gold); color:var(--ink);">Daftar Sekarang</button>
+      <pre id="regResultBox" class="mono" style="display:none; white-space:pre-wrap; word-break:break-all; background:var(--cream); border:1px solid var(--border); border-radius:12px; padding:12px; font-size:11.5px; margin-top:12px; max-height:300px; overflow:auto;"></pre>
+    </div>
   </div>
 
   <!-- ===== DASHBOARD ===== -->
@@ -207,14 +217,20 @@
     return 'Rp' + Math.round(n||0).toLocaleString('id-ID');
   }
 
-  async function authSignIn(email, password){
+  const ADMIN_DOMAIN = '@admin.aturuangku.internal';
+
+  // Terima "username admin" (mis. admin1) ATAU email penuh.
+  // Kalau tidak ada '@', otomatis diubah jadi admin1@admin.aturuangku.internal
+  async function authSignIn(usernameOrEmail, password){
+    const raw = (usernameOrEmail || '').trim().toLowerCase();
+    const email = raw.includes('@') ? raw : raw + ADMIN_DOMAIN;
     const res = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SB_ANON_KEY },
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json().catch(() => ({}));
-    if(!res.ok) throw new Error(data.error_description || data.msg || data.error || 'Email atau password salah.');
+    if(!res.ok) throw new Error(data.error_description || data.msg || data.error || 'Username atau password salah.');
     return data;
   }
 
@@ -432,8 +448,7 @@
   document.getElementById('modalBg').addEventListener('click', (e) => { if(e.target.id === 'modalBg') e.currentTarget.classList.remove('show'); });
 
   document.getElementById('btnConnect').addEventListener('click', async () => {
-    const ADMIN_DOMAIN = '@admin.aturuangku.internal';
-    let username = document.getElementById('inpEmail').value.trim().toLowerCase();
+    const username = document.getElementById('inpEmail').value.trim();
     const pass = document.getElementById('inpPass').value;
     const err = document.getElementById('gateErr');
     err.style.display = 'none';
@@ -442,13 +457,10 @@
       err.style.display = 'block';
       return;
     }
-    // kalau user ketik email lengkap (mis. akun lama), pakai apa adanya;
-    // kalau cuma ketik username (mis. "admin1"), tambahkan domain internal
-    const email = username.includes('@') ? username : username + ADMIN_DOMAIN;
     const btn = document.getElementById('btnConnect');
     btn.disabled = true; btn.textContent = 'Memproses…';
     try {
-      session = await authSignIn(email, pass);
+      session = await authSignIn(username, pass);
       loadAll();
     } catch(e){
       err.textContent = e.message;
@@ -458,7 +470,125 @@
     }
   });
 
-  document.getElementById('btnRefresh').addEventListener('click', loadAll);
+  document.getElementById('btnRegisterToggle').addEventListener('click', () => {
+    const box = document.getElementById('registerBox');
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  });
+
+  document.getElementById('btnRegister').addEventListener('click', async () => {
+    const resBox = document.getElementById('regResultBox');
+    const username = document.getElementById('inpEmail').value.trim();
+    const pass = document.getElementById('inpPass').value;
+    resBox.style.display = 'block';
+
+    if(!username || !pass){
+      resBox.textContent = '⚠️ Isi dulu Username dan Password di kolom atas, baru klik Daftar Sekarang.';
+      return;
+    }
+    if(pass.length < 6){
+      resBox.textContent = '⚠️ Password minimal 6 karakter (aturan default Supabase Auth).';
+      return;
+    }
+
+    const raw = username.toLowerCase();
+    const email = raw.includes('@') ? raw : raw + '@admin.aturuangku.internal';
+    resBox.textContent = `Mendaftarkan akun ${email} …`;
+
+    try {
+      const res = await fetch(SB_URL + '/auth/v1/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SB_ANON_KEY },
+        body: JSON.stringify({ email, password: pass }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if(!res.ok){
+        const msg = data.msg || data.error_description || data.error || 'Gagal mendaftar.';
+        if(msg.toLowerCase().includes('already') || msg.toLowerCase().includes('registered')){
+          resBox.textContent = `⚠️ Akun "${email}" sudah pernah terdaftar sebelumnya.\n\nKalau kamu lupa passwordnya, jangan daftar ulang — hapus dulu usernya di Authentication → Users, baru daftar lagi. Atau langsung coba tombol "Masuk & Muat Data" pakai password ini.`;
+        } else {
+          resBox.textContent = `❌ Gagal mendaftar:\n${msg}`;
+        }
+        return;
+      }
+
+      if(data.access_token){
+        resBox.textContent =
+`✅ BERHASIL! Akun "${email}" dibuat dan langsung aktif (tidak perlu konfirmasi email).
+
+Langkah terakhir — jalankan SQL ini sekali di Supabase SQL Editor supaya akun ini resmi jadi admin:
+
+insert into public.admin_users (id)
+select id from auth.users where email = '${email}';
+
+Setelah itu, klik tombol "Masuk & Muat Data" di atas.`;
+      } else {
+        resBox.textContent =
+`✅ Akun "${email}" berhasil dibuat, TAPI project ini mewajibkan konfirmasi email — dan karena domainnya palsu, email konfirmasi tidak akan pernah sampai.
+
+Perbaiki dengan menjalankan SQL ini sekali di SQL Editor:
+
+update auth.users
+set email_confirmed_at = now()
+where email = '${email}';
+
+Lalu jalankan juga ini supaya jadi admin:
+
+insert into public.admin_users (id)
+select id from auth.users where email = '${email}';
+
+Setelah kedua SQL itu selesai, klik tombol "Masuk & Muat Data" di atas.`;
+      }
+    } catch(e){
+      resBox.textContent = 'Gagal menghubungi Supabase: ' + e.message;
+    }
+  });
+
+  document.getElementById('btnDiag').addEventListener('click', async () => {
+    const box = document.getElementById('diagBox');
+    const username = document.getElementById('inpEmail').value.trim();
+    const pass = document.getElementById('inpPass').value;
+    box.style.display = 'block';
+    box.textContent = 'Menguji koneksi ke Supabase…';
+
+    if(!username || !pass){
+      box.textContent = '⚠️ Isi dulu Username dan Password di atas, baru klik tombol ini.';
+      return;
+    }
+
+    const raw = username.toLowerCase();
+    const email = raw.includes('@') ? raw : raw + '@admin.aturuangku.internal';
+
+    let output = `Email yang dikirim ke Supabase:\n${email}\n\n`;
+
+    try {
+      const res = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SB_ANON_KEY },
+        body: JSON.stringify({ email, password: pass }),
+      });
+      const text = await res.text();
+      let parsed;
+      try { parsed = JSON.parse(text); } catch(e){ parsed = text; }
+
+      output += `Status HTTP: ${res.status} ${res.statusText}\n\n`;
+      output += `Respons Supabase:\n${JSON.stringify(parsed, null, 2)}\n\n`;
+
+      if(res.ok){
+        output += '✅ BERHASIL — akun ini valid dan bisa login. Kalau tombol "Masuk & Muat Data" tetap gagal, coba refresh halaman ini (Ctrl+Shift+R) untuk memastikan tidak memakai file lama yang ke-cache.';
+      } else if(parsed && (parsed.error_code === 'email_not_confirmed' || (parsed.msg||'').toLowerCase().includes('confirm'))){
+        output += '❌ Email belum dikonfirmasi. Perbaiki: Authentication → Users → klik user ini → cari opsi konfirmasi email manual, ATAU hapus & buat ulang user dengan mencentang "Auto Confirm User".';
+      } else if(res.status === 400 || res.status === 401){
+        output += '❌ Kombinasi email + password ini ditolak Supabase. Kemungkinan: (1) usernya belum benar-benar dibuat di project ini, (2) passwordnya beda dari yang kamu ketik, atau (3) kamu sedang mengecek project Supabase yang salah. Cek lagi di Authentication → Users apakah "' + email + '" benar-benar ada di project dengan URL ' + SB_URL + '.';
+      } else {
+        output += '❌ Ada masalah lain, lihat detail respons di atas.';
+      }
+    } catch(e){
+      output += 'Gagal menghubungi Supabase sama sekali: ' + e.message + '\n\nKemungkinan koneksi internet bermasalah atau URL Supabase salah.';
+    }
+
+    box.textContent = output;
+  });
   document.getElementById('searchBox').addEventListener('input', renderDashboard);
   document.getElementById('sortSel').addEventListener('change', renderDashboard);
 </script>
